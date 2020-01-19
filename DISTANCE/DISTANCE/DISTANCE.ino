@@ -1,3 +1,9 @@
+int this_read = 0;      // variable to store the read value
+int last_read = 0;
+int inputPin = 48;
+int last_second = millis()/1000;
+int revs = 0;
+
 /*
     MPU6050 Triple Axis Gyroscope & Accelerometer. Pitch & Roll & Yaw Gyroscope Example.
     Read more: http://www.jarzebski.pl/arduino/czujniki-i-sensory/3-osiowy-zyroskop-i-akcelerometr-mpu6050.html
@@ -8,6 +14,7 @@
 
 #include <Wire.h>
 #include <MPU6050.h>
+#include <math.h>
 
 MPU6050 mpu;
 
@@ -42,8 +49,36 @@ float final_yaw = 0;
 
 int iteration_count = 0;
 
-void setup() 
-{
+float totalX = 0.0;
+float totalY = 0.0;
+/*
+ * how to??
+ * the accelerometer and this system must be wired to the same arduino
+ * 
+ * 0 - set everything up, including perceived displacement
+ * 1 - at runtime, get the current angle in the xy plane (whatever plane is parallel to the ground)
+ * 2 - if a new revolution (magnet) is detected:
+ *     - get current xy angle
+ *     - get x and y components of that revolution
+ *     - add calculated x and y components to to total x displacement and total y displacement
+ *     - based on x and y components, determine overall displacement
+ *     
+ *  if a rider goes two feet forward, turns right 45, and goes two feet forward with a magnet at every 1 feet worth of revolution:
+ *  magnet is detected, angle is read to be 0 degrees = 1 foot y, 0 feet x
+ *  2 feet y, 0 feet x
+ *  angle then read to be 45 -> 2.7 feet y, 0.7 feet x
+ *  angle is still 45 for the last foot -> 3.4 feet y, 1.4 feet x
+ *  in essence, displacement is calculated with a series of 1-foot long vectors that are added together to produce the final position
+ *  
+ *  
+ */
+
+/*
+ * Digital 1 == HIGH, Digital 0 == LOW
+ */
+
+void setup() {
+  pinMode(inputPin, INPUT);    // sets the digital pin 48 as input
   Serial.begin(115200);
 
   // Initialize MPU6050
@@ -59,12 +94,45 @@ void setup()
 
   // Set threshold sensivty. Default 3.
   // If you don't want use threshold, comment this line or set 0.
-  //mpu.setThreshold(3);
+  mpu.setThreshold(3);
 }
 
-void loop()
-{ 
-  //for (int i = 0; i <= 99; i++){
+void loop() {
+  gyroCalc();
+  int this_read = digitalRead(inputPin);   // read the input pin
+  if (last_second != (millis()/1000)){
+    //Serial.print("revs this second: ");
+    //Serial.println(revs);
+    revs = 0;
+    last_second = (millis()/1000);
+  }
+  //Serial.println(this_read);
+  //Serial.println(last_read);
+  if (this_read == last_read){
+    //a
+  }else{
+    if (this_read == 0){
+      last_read = this_read;
+      //Serial.println("now off");
+    }else{
+      last_read = this_read;
+      //Serial.println("now on");
+      //revs += 1;
+
+      totalX += (cos((final_yaw /180 * PI)));
+      
+      totalY += (sin((final_yaw /180 * PI)));
+     
+      Serial.print("Total Y traveled");Serial.println(totalY);
+      }
+  }
+  delay(1);//without this 1ms delay or the presence of any of the print statements above, a revolution can sometimes be counted twice
+  Serial.print("Yaw Angle");Serial.println(final_yaw);  
+ 
+}
+
+void gyroCalc(){
+   //for (int i = 0; i <= 99; i++){
     timer = millis();
   
     // Read normalized values
@@ -111,7 +179,13 @@ void loop()
   yaw_sum = 0;
   
   iteration_count += 1;
-  
+
+  if (final_yaw < 0){
+    final_yaw += 360;
+    }
+  final_yaw = (int) final_yaw % 360; 
+  //Serial.println(final_yaw);
+  /* 
   Serial.print("|");
   Serial.print("GYRO");
   Serial.print("|");
@@ -127,5 +201,5 @@ void loop()
   Serial.print("|");
   Serial.print(yaw_average_delta);
   Serial.println("|");
-  
+  */
 }

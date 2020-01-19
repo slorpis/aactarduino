@@ -53,7 +53,7 @@ void loop() {
       //Serial.println("now off");
     }else{
       last_read = this_read;
-      //Serial.println("now on");
+      Serial.println("now on");
       revs += 1;
     }
   }
